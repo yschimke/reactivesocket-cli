@@ -112,9 +112,8 @@ graal {
 }
 
 dependencies {
-//  implementation(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
-  implementation("io.rsocket.kotlin:rsocket-core-jvm:0.10.0-task/interactions-api-SNAPSHOT")
-  implementation("io.rsocket.kotlin:rsocket-transport-ktor-client:0.10.0-task/interactions-api-SNAPSHOT")
+  implementation("io.rsocket.kotlin:rsocket-core-jvm:0.10.0-frame-logging-SNAPSHOT")
+  implementation("io.rsocket.kotlin:rsocket-transport-ktor-client:0.10.0-frame-logging-SNAPSHOT")
   implementation("io.ktor:ktor-network-tls:1.4.0")
   implementation("io.ktor:ktor-client-okhttp:1.4.0")
   implementation("io.ktor:ktor-client-core-jvm:1.4.0")

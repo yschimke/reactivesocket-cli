@@ -24,11 +24,13 @@ import io.netty.buffer.ByteBufAllocator
 import io.netty.buffer.ByteBufUtil
 import io.netty.buffer.CompositeByteBuf
 import io.rsocket.kotlin.RSocket
+import io.rsocket.kotlin.connection.LoggingConnection
 import io.rsocket.kotlin.core.RSocketClientSupport
 import io.rsocket.kotlin.core.rSocket
 import io.rsocket.kotlin.keepalive.KeepAlive
 import io.rsocket.kotlin.payload.Payload
 import io.rsocket.kotlin.payload.PayloadMimeType
+import io.rsocket.kotlin.plugin.ConnectionInterceptor
 import io.rsocket.metadata.CompositeMetadataCodec
 import io.rsocket.metadata.TaggingMetadataCodec
 import io.rsocket.metadata.WellKnownMimeType
@@ -162,7 +164,7 @@ class Main : Runnable {
     }
 
     if (!this::client.isInitialized) {
-      client = buildClient(uri, dataFormat!!, metadataFormat!!, keepalive)
+      client = buildClient(uri)
       UrlCandidates.recordUrl(uri)
     }
 
@@ -258,6 +260,29 @@ class Main : Runnable {
     outputHandler.showOutput(SimpleResponse(dataFormat, it.data.readByteBuffer().toByteString()))
   }
 
+  @OptIn(ExperimentalTime::class)
+  @KtorExperimentalAPI
+  suspend fun buildClient(uri: String): RSocket {
+    val engine: HttpClientEngineFactory<*> = OkHttp
+
+    val client = HttpClient(engine) {
+      install(WebSockets)
+      install(RSocketClientSupport) {
+        payloadMimeType = PayloadMimeType(dataFormat!!, metadataFormat!!)
+
+        if (this@Main.keepalive != null) {
+          this.keepAlive = KeepAlive(this@Main.keepalive!!.seconds)
+        }
+
+        if (debug) {
+          plugin = plugin.copy(connection = listOf(::LoggingConnection))
+        }
+      }
+    }
+
+    return client.rSocket(uri, uri.startsWith("wss"))
+  }
+
   companion object {
     const val NAME = "reactivesocket-cli"
 
@@ -305,23 +330,4 @@ class Main : Runnable {
 
 private fun <T> Flow<T>.request(requestN: Int): Flow<T> {
   return this.buffer(requestN).take(requestN)
-}
-
-@OptIn(ExperimentalTime::class)
-@KtorExperimentalAPI
-suspend fun buildClient(uri: String, dataFormat: String, metadataFormat: String, keepAlive: Int? = null): RSocket {
-  val engine: HttpClientEngineFactory<*> = OkHttp
-
-  val client = HttpClient(engine) {
-    install(WebSockets)
-    install(RSocketClientSupport) {
-      payloadMimeType = PayloadMimeType(dataFormat, metadataFormat)
-
-      if (keepAlive != null) {
-        this.keepAlive = KeepAlive(keepAlive.seconds)
-      }
-    }
-  }
-
-  return client.rSocket(uri, uri.startsWith("wss"))
 }
